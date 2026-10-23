@@ -1,0 +1,167 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  MARKETER
+  PHOTOGRAPHER
+  MODEL
+}
+
+enum PropertyType {
+  APARTMENT
+  VILLA
+  HOUSE
+  SHOP
+  OFFICE
+  LAND
+  BUILDING
+  CHALET
+  OTHER
+}
+
+enum ListingType {
+  SALE
+  RENT
+}
+
+enum PropertyStatus {
+  AVAILABLE
+  RESERVED
+  SOLD
+  RENTED
+  UNAVAILABLE
+  ARCHIVED
+}
+
+enum DealStatus {
+  LEAD
+  NEGOTIATION
+  RESERVED
+  COMPLETED
+  CANCELLED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         UserRole @default(MARKETER)
+  isActive     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  properties   Property[] @relation("CreatedProperties")
+  deals        Deal[] @relation("AgentDeals")
+}
+
+model Owner {
+  id          String     @id @default(cuid())
+  name        String
+  phone       String
+  email       String?
+  nationalId  String?
+  address     String?
+  notes       String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  properties  Property[]
+}
+
+model Client {
+  id          String   @id @default(cuid())
+  name        String
+  phone       String
+  email       String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deals       Deal[]
+}
+
+model Property {
+  id             String         @id @default(cuid())
+  code           String         @unique
+  title          String
+  description    String?
+  type           PropertyType
+  listingType    ListingType
+  status         PropertyStatus @default(AVAILABLE)
+  price          Decimal        @db.Decimal(14, 2)
+  areaSqm        Decimal?       @db.Decimal(10, 2)
+  governorate    String?
+  city           String?
+  district       String?
+  address        String?
+  bedrooms       Int?
+  bathrooms      Int?
+  floor          Int?
+  totalFloors    Int?
+  finishing      String?
+  furnished      Boolean?
+  hasElevator    Boolean?
+  parking        Boolean?
+  balcony        Boolean?
+  published      Boolean        @default(false)
+  imageUrls      String[]       @default([])
+  notes          String?
+  ownerId        String?
+  owner          Owner?         @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  createdById    String?
+  createdBy      User?          @relation("CreatedProperties", fields: [createdById], references: [id], onDelete: SetNull)
+  deals          Deal[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([status, published])
+  @@index([city, district])
+  @@index([listingType, type])
+}
+
+model Deal {
+  id          String     @id @default(cuid())
+  reference   String     @unique
+  status      DealStatus @default(LEAD)
+  value       Decimal    @db.Decimal(14, 2)
+  notes       String?
+  propertyId  String
+  property    Property   @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+  clientId    String
+  client      Client     @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  agentId     String?
+  agent       User?      @relation("AgentDeals", fields: [agentId], references: [id], onDelete: SetNull)
+  commission  Commission?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model Commission {
+  id          String   @id @default(cuid())
+  dealId      String   @unique
+  deal        Deal     @relation(fields: [dealId], references: [id], onDelete: Restrict)
+  amount      Decimal  @db.Decimal(14, 2)
+  paid        Boolean  @default(false)
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  title       String
+  amount      Decimal  @db.Decimal(14, 2)
+  category    String
+  expenseDate DateTime @default(now())
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([expenseDate])
+}
